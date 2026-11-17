@@ -139,20 +139,59 @@ def clasificacion_monedas(img_rgb, monedas):
         colores_monedas : diccionario {tipo: color RGB} usado para dibujar.
         total_dinero    : suma de dinero en pesos.
     """
-    TH_AREA_10C_1P = 75000
-    TH_AREA_1P_50C = 95000
-
     conteo_monedas = {"10 centavos": 0, "1 peso": 0, "50 centavos": 0}
     colores_monedas = {"10 centavos": (0, 255, 255), "1 peso": (255, 0, 255), "50 centavos": (255, 255, 0)}
 
-    for m in monedas:
-        if m["area"] < TH_AREA_10C_1P:
-            m["tipo"] = "10 centavos"
-        elif m["area"] < TH_AREA_1P_50C:
-            m["tipo"] = "1 peso"
-        else:
-            m["tipo"] = "50 centavos"
-        conteo_monedas[m["tipo"]] += 1
+    if monedas and len(monedas) < 3:
+        raise ValueError("Se necesitan al menos 3 monedas para comparar k entre 2 y 6.")
+
+    if monedas:
+        areas = np.array([m["area"] for m in monedas], dtype=np.float32)
+        Z = areas.reshape(-1, 1)
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        distancias = np.abs(areas[:, None] - areas[None, :])
+        mejor_silueta = -1.0
+
+        for k in range(2, min(6, len(monedas) - 1) + 1):
+            ret, label, center = cv2.kmeans(Z, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+            etiquetas = label.flatten()
+            siluetas = []
+
+            for i, etiqueta in enumerate(etiquetas):
+                mismo_cluster = etiquetas == etiqueta
+                mismo_cluster[i] = False
+                distancia_interna = distancias[i, mismo_cluster].mean() if mismo_cluster.any() else 0.0
+                distancia_externa = min(
+                    distancias[i, etiquetas == otro].mean()
+                    for otro in set(etiquetas)
+                    if otro != etiqueta
+                )
+                denominador = max(distancia_interna, distancia_externa)
+                siluetas.append(
+                    (distancia_externa - distancia_interna) / denominador if denominador else 0.0
+                )
+
+            silueta_media = float(np.mean(siluetas))
+            if silueta_media > mejor_silueta:
+                mejor_silueta = silueta_media
+                mejor_k = k
+                mejores_etiquetas = etiquetas
+                mejores_centros = center.flatten()
+
+        tipos_por_area = ["10 centavos", "1 peso", "50 centavos"]
+        if mejor_k != len(tipos_por_area):
+            raise ValueError(
+                f"El mejor k ({mejor_k}) no coincide con las 3 denominaciones esperadas."
+            )
+        orden_clusters = np.argsort(mejores_centros)
+        tipo_por_cluster = {
+            int(cluster): tipo
+            for tipo, cluster in zip(tipos_por_area, orden_clusters)
+        }
+
+        for m, etiqueta in zip(monedas, mejores_etiquetas):
+            m["tipo"] = tipo_por_cluster[int(etiqueta)]
+            conteo_monedas[m["tipo"]] += 1
 
     total_dinero = conteo_monedas["10 centavos"]*0.10 + conteo_monedas["1 peso"]*1 + conteo_monedas["50 centavos"]*0.50
 
