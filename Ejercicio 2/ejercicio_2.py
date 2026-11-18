@@ -9,7 +9,7 @@ K_TOPHAT = 15
 UMBRALES = range(30, 200, 5)
 ALTO_MIN, ALTO_MAX = 8, 30   
 AREA_MIN = 15                   
-RA_MIN, RA_MAX = 1.4, 3.0      
+RA_MIN, RA_MAX = 1.5, 3.0      
 
 
 
