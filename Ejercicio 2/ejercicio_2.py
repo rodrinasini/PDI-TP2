@@ -12,7 +12,6 @@ AREA_MIN = 15
 RA_MIN, RA_MAX = 1.5, 3.0      
 
 
-
 # --- Funciones ---------------------------------------------------------------
 
 def imshow(img, new_fig=True, title=None, color_img=False, blocking=False, colorbar=False, ticks=False):

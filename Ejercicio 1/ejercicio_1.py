@@ -92,12 +92,6 @@ def segmentacion(img):
     img_ero = cv2.erode(img_fh, kernel)            
     img_seg = cv2.morphologyEx(img_ero, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (41, 41))) 
 
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img_seg, connectivity=8, ltype=cv2.CV_32S)
-    labels_norm = np.uint8((255/(num_labels-1)) * labels)
-    im_color = cv2.applyColorMap(labels_norm, cv2.COLORMAP_JET)
-    im_color = cv2.cvtColor(im_color, cv2.COLOR_BGR2RGB)
-    im_color[labels == 0] = 0
-
     TH_FP_INV = 15
     contours, hierarchy = cv2.findContours(img_seg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
@@ -230,9 +224,8 @@ def clasificacion_dados(img_gray, img_rgb, dados):
 
         mask = np.zeros_like(img_gray)
         cv2.drawContours(mask, [d["cnt"]], -1, 255, -1)
-        mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15)))
         mask = mask[y:y+h, x:x+w]
-        dado = cv2.GaussianBlur(img_gray[y:y+h, x:x+w], ksize=(5, 5), sigmaX=0)
+        dado = img_gray[y:y+h, x:x+w]
 
         _, dado_th = cv2.threshold(dado, thresh=TH_PUNTO, maxval=255, type=cv2.THRESH_BINARY_INV)
         dado_th = cv2.bitwise_and(dado_th, mask)
